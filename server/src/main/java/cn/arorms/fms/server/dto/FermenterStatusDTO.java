@@ -1,37 +1,29 @@
-package cn.arorms.fms.server.entities;
+package cn.arorms.fms.server.dto;
 
 import cn.arorms.fms.server.enums.ControlMode;
-import com.fasterxml.jackson.annotation.JsonFormat;
-import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
-import lombok.Getter;
+import lombok.Builder;
+import lombok.Data;
 import lombok.NoArgsConstructor;
-import lombok.Setter;
 
+import java.io.Serializable;
 import java.time.Instant;
 
-@Entity
-@Table(name = "fermenter_status")
-@Getter @Setter @AllArgsConstructor @NoArgsConstructor
-public class FermenterStatus {
-    @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long id;
-
+@Data
+@Builder
+@NoArgsConstructor
+@AllArgsConstructor
+public class FermenterStatusDTO implements Serializable {
     private String deviceName;
-
     private float temperature;
     private float phValue;
     private float dissolvedOxygen;
     private float foamLevel;
-
     private float addAcid;
     private float addAlkali;
     private float cooling;
     private float heating;
     private float stirring;
-
     private ControlMode controlMode;
-
-    @JsonFormat(shape = JsonFormat.Shape.NUMBER)
     private Instant timestamp;
 }

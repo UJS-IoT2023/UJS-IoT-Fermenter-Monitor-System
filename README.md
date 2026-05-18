@@ -4,11 +4,11 @@
 
 # MQTT 中继
 
-使用阿里云物联网平台。
+使用阿里云物联网平台。MQTT 中继收到终端设备发来的消息后，存储到阿里云的 AMQP 队列中。
 
 # 物联网平台
 
-使用 Java Spring Boot 4.0.6，数据库为 PostgreSQL。负责与 MQTT 中继通信，
+使用 Java Spring Boot 4.0.6，数据库为 PostgreSQL。AMQP 消息发送到后端被解析并存储到 Redis 中，一共存 1 小时完整颗粒度记录，同时用 Websocket 广播最新记录。同时设定定时任务每 30 分钟下采样设备信息持久化存入数据库。
 
 # 模拟终端（网关）
 

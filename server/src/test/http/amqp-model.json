@@ -1,0 +1,51 @@
+{
+  "deviceType": "CustomCategory",
+  "iotId": "xzHx151SiZLvI1HstLqFk0zis0",
+  "requestId": "26",
+  "checkFailedData": {},
+  "productKey": "k0zisqjxyc9",
+  "gmtCreate": 1778999474990,
+  "deviceName": "F-001",
+  "items": {
+    "controlMode": {
+      "value": 1,
+      "time": 1778999474980
+    },
+    "phValue": {
+      "value": 1.7,
+      "time": 1778999474980
+    },
+    "stirring": {
+      "value": 46.49,
+      "time": 1778999474980
+    },
+    "cooling": {
+      "value": 0,
+      "time": 1778999474980
+    },
+    "temperature": {
+      "value": 14.100000000000001,
+      "time": 1778999474980
+    },
+    "heating": {
+      "value": 0,
+      "time": 1778999474980
+    },
+    "dissolvedOxygen": {
+      "value": 46.89,
+      "time": 1778999474980
+    },
+    "foamLevel": {
+      "value": 79.34000000000003,
+      "time": 1778999474980
+    },
+    "addAlkali": {
+      "value": 0,
+      "time": 1778999474980
+    },
+    "addAcid": {
+      "value": 0,
+      "time": 1778999474980
+    }
+  }
+}
