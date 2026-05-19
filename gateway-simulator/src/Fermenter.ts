@@ -52,7 +52,41 @@ export class Fermenter {
   private randomRange(min: number, max: number): number {
     return Math.round((Math.random() * (max - min) + min) * 100) / 100;
   }
+  private applyFuzzyControl(): void {
+  const p = this.properties;
 
+  //目标值
+  const TARGET_TEMP = 30.0;
+  const TARGET_PH = 7.0;
+
+  //温度误差
+  const tempError = p.temperature - TARGET_TEMP;
+  const phError = p.phValue - TARGET_PH;
+
+  // 温度模糊规则
+  if (tempError > 2) {
+    p.cooling = 1;
+    p.heating = 0;
+  } else if (tempError < -2) {
+    p.heating = 1;
+    p.cooling = 0;
+  } else {
+    p.heating = 0;
+    p.cooling = 0;
+  }
+
+  //pH 模糊规则 
+  if (phError > 0.2) {
+    p.addAcid = 1;
+    p.addAlkali = 0;
+  } else if (phError < -0.2) {
+    p.addAlkali = 1;
+    p.addAcid = 0;
+  } else {
+    p.addAcid = 0;
+    p.addAlkali = 0;
+  }
+}
   connect(): void {
     const deviceConfig = {
       productKey: this.productKey,
@@ -130,8 +164,8 @@ export class Fermenter {
 
     this.properties.foamLevel += this.randomRange(-3, 3);
     this.properties.foamLevel = Math.max(0, Math.min(100, this.properties.foamLevel));
+    this.applyFuzzyControl();//每次传感器变化后自动决策
   }
-
   disconnect(): void {
     if (this.client) {
       this.client.end();
