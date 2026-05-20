@@ -2,7 +2,7 @@ package cn.arorms.fms.server.tasks;
 
 import cn.arorms.fms.server.dto.FermenterStatusDTO;
 import cn.arorms.fms.server.entities.FermenterStatus;
-import cn.arorms.fms.server.repositories.FermenterStatusRepository;
+import cn.arorms.fms.server.services.FermenterStatusService;
 import cn.arorms.fms.server.services.RedisService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,12 +16,12 @@ import java.time.Instant;
 public class DownsampleTask {
 
     private final RedisService redisService;
-    private final FermenterStatusRepository repository;
+    private final FermenterStatusService fermenterStatusService;
 
     @Autowired
-    public DownsampleTask(RedisService redisService, FermenterStatusRepository repository) {
+    public DownsampleTask(RedisService redisService, FermenterStatusService fermenterStatusService) {
         this.redisService = redisService;
-        this.repository = repository;
+        this.fermenterStatusService = fermenterStatusService;
     }
 
     @Scheduled(cron = "0 30 * * * *")
@@ -47,7 +47,7 @@ public class DownsampleTask {
             entity.setControlMode(latest.getControlMode());
             entity.setTimestamp(Instant.now());
 
-            repository.save(entity);
+            fermenterStatusService.save(entity);
             log.info("Downsample saved to PostgreSQL: deviceName={}", deviceName);
         }
     }

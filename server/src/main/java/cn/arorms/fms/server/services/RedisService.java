@@ -15,6 +15,7 @@ import java.util.*;
 public class RedisService {
 
     private static final String KEY_PREFIX = "fermenter:status:";
+    private static final String DEVICE_ONLINE_KEY_PREFIX = "device:online:";
     private static final long ONE_HOUR_MS = 60 * 60 * 1000L;
 
     private final RedisTemplate<String, String> redisTemplate;
@@ -105,6 +106,33 @@ public class RedisService {
         Set<String> deviceNames = new HashSet<>();
         for (String k : keys) {
             deviceNames.add(k.substring(KEY_PREFIX.length()));
+        }
+        return deviceNames;
+    }
+
+    public void saveDeviceOnlineStatus(String deviceName, boolean isOnline, String lastTime, String iotId, String clientIp) {
+        String key = DEVICE_ONLINE_KEY_PREFIX + deviceName;
+        Map<String, String> map = new HashMap<>();
+        map.put("isOnline", String.valueOf(isOnline));
+        map.put("lastTime", lastTime != null ? lastTime : "");
+        map.put("iotId", iotId != null ? iotId : "");
+        map.put("clientIp", clientIp != null ? clientIp : "");
+        redisTemplate.opsForHash().putAll(key, map);
+    }
+
+    public Map<Object, Object> getDeviceOnlineStatus(String deviceName) {
+        String key = DEVICE_ONLINE_KEY_PREFIX + deviceName;
+        return redisTemplate.opsForHash().entries(key);
+    }
+
+    public Set<String> getAllOnlineDeviceNames() {
+        Set<String> keys = redisTemplate.keys(DEVICE_ONLINE_KEY_PREFIX + "*");
+        if (keys == null) {
+            return Collections.emptySet();
+        }
+        Set<String> deviceNames = new HashSet<>();
+        for (String k : keys) {
+            deviceNames.add(k.substring(DEVICE_ONLINE_KEY_PREFIX.length()));
         }
         return deviceNames;
     }
