@@ -1,13 +1,15 @@
 package cn.arorms.fms.server.services;
 
-import cn.arorms.fms.server.dto.FermenterStatusDTO;
+import cn.arorms.fms.server.dto.FermenterStatusDto;
 import cn.arorms.fms.server.entities.FermenterStatus;
 import cn.arorms.fms.server.enums.ControlMode;
 import cn.arorms.fms.server.repositories.FermenterStatusRepository;
+import cn.arorms.fms.server.repositories.FermenterStatusRedisRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
@@ -20,16 +22,16 @@ import java.util.List;
 public class FermenterStatusService {
 
     private final FermenterStatusRepository fermenterStatusRepository;
+    private final FermenterStatusRedisRepository fermenterStatusRedisRepository;
     private final ObjectMapper objectMapper;
-    private final RedisService redisService;
 
     @Autowired
     public FermenterStatusService(FermenterStatusRepository fermenterStatusRepository,
-                                  ObjectMapper objectMapper,
-                                  RedisService redisService) {
+                                  FermenterStatusRedisRepository fermenterStatusRedisRepository,
+                                  ObjectMapper objectMapper) {
         this.fermenterStatusRepository = fermenterStatusRepository;
+        this.fermenterStatusRedisRepository = fermenterStatusRedisRepository;
         this.objectMapper = objectMapper;
-        this.redisService = redisService;
     }
 
     public Page<FermenterStatus> getAllStatus(Pageable pageable) {
@@ -40,7 +42,7 @@ public class FermenterStatusService {
         fermenterStatusRepository.save(status);
     }
 
-    public FermenterStatusDTO processAndSaveToRedis(String jsonString) throws Exception {
+    public FermenterStatusDto processAndSaveToRedis(String jsonString) throws Exception {
         JsonNode rootNode = objectMapper.readTree(jsonString);
 
         String deviceName = rootNode.path("deviceName").asText();
@@ -51,7 +53,7 @@ public class FermenterStatusService {
             return null;
         }
 
-        FermenterStatusDTO dto = FermenterStatusDTO.builder()
+        FermenterStatusDto dto = FermenterStatusDto.builder()
                 .deviceName(deviceName)
                 .temperature(getFloat(items, "temperature"))
                 .phValue(getFloat(items, "phValue"))
@@ -73,7 +75,7 @@ public class FermenterStatusService {
             dto.setTimestamp(Instant.ofEpochMilli(gmtCreate));
         }
 
-        redisService.saveStatus(dto);
+        fermenterStatusRedisRepository.save(dto);
         log.info("Data saved to Redis: deviceName={}", deviceName);
         return dto;
     }
@@ -85,11 +87,42 @@ public class FermenterStatusService {
         return 0f;
     }
 
-    public List<FermenterStatusDTO> getLatestAllDevices() {
-        return redisService.getLatestAllDevices();
+    public FermenterStatusDto getFermenterLatestStatusByDeviceName(String deviceName) {
+        return fermenterStatusRedisRepository.getLatest(deviceName);
     }
 
-    public List<FermenterStatusDTO> getRealtimeData(String deviceName, long fromTimestamp, long toTimestamp) {
-        return redisService.getRealtimeData(deviceName, fromTimestamp, toTimestamp);
+    public List<FermenterStatusDto> getLatestAllDevices() {
+        return fermenterStatusRedisRepository.getLatestAllDevices();
+    }
+
+    public List<FermenterStatusDto> getRealtimeData(String deviceName, long fromTimestamp, long toTimestamp) {
+        return fermenterStatusRedisRepository.getRealtimeData(deviceName, fromTimestamp, toTimestamp);
+    }
+
+    @Scheduled(cron = "0 30 * * * *")
+    public void downsample() {
+        for (String deviceName : fermenterStatusRedisRepository.getAllDeviceNames()) {
+            FermenterStatusDto latest = fermenterStatusRedisRepository.getLatest(deviceName);
+            if (latest == null) {
+                continue;
+            }
+
+            FermenterStatus entity = new FermenterStatus();
+            entity.setDeviceName(latest.getDeviceName());
+            entity.setTemperature(latest.getTemperature());
+            entity.setPhValue(latest.getPhValue());
+            entity.setDissolvedOxygen(latest.getDissolvedOxygen());
+            entity.setFoamLevel(latest.getFoamLevel());
+            entity.setAddAcid(latest.getAddAcid());
+            entity.setAddAlkali(latest.getAddAlkali());
+            entity.setCooling(latest.getCooling());
+            entity.setHeating(latest.getHeating());
+            entity.setStirring(latest.getStirring());
+            entity.setControlMode(latest.getControlMode());
+            entity.setTimestamp(Instant.now());
+
+            fermenterStatusRepository.save(entity);
+            log.info("Downsample saved to PostgreSQL: deviceName={}", deviceName);
+        }
     }
 }

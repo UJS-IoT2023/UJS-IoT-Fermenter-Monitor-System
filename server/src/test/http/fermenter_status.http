@@ -1,0 +1,2 @@
+### Get latest status by device name
+GET http://localhost:8080/api/fermenter-status/F-001/latest

@@ -1,0 +1,8 @@
+### Get all device connection status
+GET http://localhost:8080/api/fermenter-connection/devices
+
+### Get device status
+GET http://localhost:8080/api/fermenter-connection/F-001
+
+### Get device connection events by device name
+GET http://localhost:8080/api/fermenter-connection/F-001/event

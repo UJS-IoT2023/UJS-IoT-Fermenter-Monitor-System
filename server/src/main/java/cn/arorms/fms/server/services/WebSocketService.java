@@ -1,6 +1,6 @@
 package cn.arorms.fms.server.services;
 
-import cn.arorms.fms.server.dto.FermenterStatusDTO;
+import cn.arorms.fms.server.dto.FermenterStatusDto;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.messaging.simp.SimpMessagingTemplate;
@@ -19,7 +19,7 @@ public class WebSocketService {
         this.messagingTemplate = messagingTemplate;
     }
 
-    public void broadcast(FermenterStatusDTO dto) {
+    public void broadcast(FermenterStatusDto dto) {
         messagingTemplate.convertAndSend(TOPIC, dto);
         log.debug("WebSocket broadcast sent: deviceName={}", dto.getDeviceName());
     }

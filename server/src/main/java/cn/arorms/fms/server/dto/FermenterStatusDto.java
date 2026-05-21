@@ -13,7 +13,7 @@ import java.time.Instant;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class FermenterStatusDTO implements Serializable {
+public class FermenterStatusDto implements Serializable {
     private String deviceName;
     private float temperature;
     private float phValue;

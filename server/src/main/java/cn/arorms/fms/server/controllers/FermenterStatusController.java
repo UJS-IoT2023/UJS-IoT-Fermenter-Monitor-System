@@ -1,6 +1,6 @@
 package cn.arorms.fms.server.controllers;
 
-import cn.arorms.fms.server.dto.FermenterStatusDTO;
+import cn.arorms.fms.server.dto.FermenterStatusDto;
 import cn.arorms.fms.server.entities.FermenterStatus;
 import cn.arorms.fms.server.repositories.FermenterStatusRepository;
 import cn.arorms.fms.server.services.FermenterStatusService;
@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -40,13 +41,13 @@ public class FermenterStatusController {
         return ResponseEntity.ok(fermenterStatusService.getAllStatus(pageable));
     }
 
-    @GetMapping("/latest")
-    public ResponseEntity<List<FermenterStatusDTO>> getLatest() {
-        return ResponseEntity.ok(fermenterStatusService.getLatestAllDevices());
+    @GetMapping("/{device_name}/latest")
+    public ResponseEntity<FermenterStatusDto> getFermenterLatestStatus(@PathVariable("device_name") String deviceName) {
+        return ResponseEntity.ok(fermenterStatusService.getFermenterLatestStatusByDeviceName(deviceName));
     }
 
     @GetMapping("/realtime")
-    public ResponseEntity<List<FermenterStatusDTO>> getRealtime(
+    public ResponseEntity<List<FermenterStatusDto>> getRealtime(
             @RequestParam(required = false) String deviceName) {
         long now = System.currentTimeMillis();
         long oneHourAgo = now - 60 * 60 * 1000L;

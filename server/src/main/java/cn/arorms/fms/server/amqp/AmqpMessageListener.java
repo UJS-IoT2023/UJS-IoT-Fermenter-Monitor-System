@@ -1,6 +1,6 @@
 package cn.arorms.fms.server.amqp;
 
-import cn.arorms.fms.server.dto.FermenterStatusDTO;
+import cn.arorms.fms.server.dto.FermenterStatusDto;
 import cn.arorms.fms.server.services.FermenterConnectionService;
 import cn.arorms.fms.server.services.FermenterStatusService;
 import cn.arorms.fms.server.services.WebSocketService;
@@ -52,7 +52,7 @@ public class AmqpMessageListener implements MessageListener {
                     log.info("Device connection event processed: deviceName={}, eventType={}",
                             event.getDeviceName(), event.getEventType());
                 } else if (rootNode.has("items")) {
-                    FermenterStatusDTO dto = fermenterStatusService.processAndSaveToRedis(jsonString);
+                    FermenterStatusDto dto = fermenterStatusService.processAndSaveToRedis(jsonString);
                     if (dto != null) {
                         webSocketService.broadcast(dto);
                     }
