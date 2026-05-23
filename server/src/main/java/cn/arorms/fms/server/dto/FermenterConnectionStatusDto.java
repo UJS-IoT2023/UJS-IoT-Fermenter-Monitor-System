@@ -20,6 +20,6 @@ public class FermenterConnectionStatusDto {
     private String iotId;
     private String clientIp;
     private String productKey;
-    private boolean isOnline;
+    private boolean online;
     private String lastTime;
 }

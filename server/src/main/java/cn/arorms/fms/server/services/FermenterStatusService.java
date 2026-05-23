@@ -91,9 +91,13 @@ public class FermenterStatusService {
         return fermenterStatusRedisRepository.getLatest(deviceName);
     }
 
-    public List<FermenterStatusDto> getLatestAllDevices() {
-        return fermenterStatusRedisRepository.getLatestAllDevices();
+    public List<FermenterStatusDto> getLast20Minutes(String deviceName) {
+        return fermenterStatusRedisRepository.getLast20Minutes(deviceName);
     }
+
+//    public List<FermenterStatusDto> getLatestAllDevices() {
+//        return fermenterStatusRedisRepository.getLatestAllDevices();
+//    }
 
     public List<FermenterStatusDto> getRealtimeData(String deviceName, long fromTimestamp, long toTimestamp) {
         return fermenterStatusRedisRepository.getRealtimeData(deviceName, fromTimestamp, toTimestamp);

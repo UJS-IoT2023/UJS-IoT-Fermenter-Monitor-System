@@ -77,7 +77,7 @@ public class FermenterConnectionService {
         Map<Object, Object> entries = fermenterConnectionRedisRepository.getDeviceConnectionStatus(deviceName);
         return FermenterConnectionStatusDto.builder()
                 .deviceName(deviceName)
-                .isOnline(entries.get("isOnline").equals("true"))
+                .online(entries.get("online").equals("true"))
                 .lastTime((String) entries.get("lastTime"))
                 .iotId((String) entries.get("iotId"))
                 .clientIp((String) entries.get("clientIp"))

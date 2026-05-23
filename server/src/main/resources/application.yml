@@ -32,3 +32,17 @@ aliyun:
       consumer-group-id: "${ALIYUN_CONSUMER_GROUP_ID:DEFAULT_GROUP}"
       region: "${ALIYUN_REGION:cn-shanghai}"
       iot-instance-id: "${ALIYUN_IOT_INSTANCE_ID}"
+      idle-timeout: 80000
+    openapi:
+      region: "${ALIYUN_REGION:cn-shanghai}"
+      access-key: "${ALIYUN_ACCESS_KEY}"
+      access-secret: "${ALIYUN_ACCESS_SECRET}"
+      iot-instance-id: "${ALIYUN_IOT_INSTANCE_ID}"
+
+logging:
+  level:
+    org:
+      springframework:
+        web:
+          socket: DEBUG
+        messaging: DEBUG

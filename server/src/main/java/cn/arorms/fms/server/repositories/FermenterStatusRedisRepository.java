@@ -59,21 +59,21 @@ public class FermenterStatusRedisRepository {
         }
     }
 
-    public List<FermenterStatusDto> getLatestAllDevices() {
-        Set<String> keys = redisTemplate.keys(KEY_PREFIX + "*");
-        if (keys == null || keys.isEmpty()) {
-            return Collections.emptyList();
-        }
-        List<FermenterStatusDto> result = new ArrayList<>();
-        for (String k : keys) {
-            String deviceName = k.substring(KEY_PREFIX.length());
-            FermenterStatusDto latest = getLatest(deviceName);
-            if (latest != null) {
-                result.add(latest);
-            }
-        }
-        return result;
-    }
+//    public List<FermenterStatusDto> getLatestAllDevices() {
+//        Set<String> keys = redisTemplate.keys(KEY_PREFIX + "*");
+//        if (keys == null || keys.isEmpty()) {
+//            return Collections.emptyList();
+//        }
+//        List<FermenterStatusDto> result = new ArrayList<>();
+//        for (String k : keys) {
+//            String deviceName = k.substring(KEY_PREFIX.length());
+//            FermenterStatusDto latest = getLatest(deviceName);
+//            if (latest != null) {
+//                result.add(latest);
+//            }
+//        }
+//        return result;
+//    }
 
     public List<FermenterStatusDto> getRealtimeData(String deviceName, long fromTimestamp, long toTimestamp) {
         String k = key(deviceName);

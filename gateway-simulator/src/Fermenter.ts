@@ -1,4 +1,5 @@
 import AliyunIoT from 'aliyun-iot-device-sdk';
+import { FuzzyController } from './FuzzyController.js';
 
 export interface FermenterProperties {
   temperature: number;
@@ -26,12 +27,14 @@ export class Fermenter {
   properties: FermenterProperties;
   client: any = null;
   connected: boolean = false;
+  private fuzzyController: FuzzyController;
 
   constructor(deviceName: string, productKey: string, deviceSecret: string) {
     this.deviceName = deviceName;
     this.productKey = productKey;
     this.deviceSecret = deviceSecret;
     this.properties = this.randomProperties();
+    this.fuzzyController = new FuzzyController();
   }
 
   private randomProperties(): FermenterProperties {
@@ -130,6 +133,18 @@ export class Fermenter {
 
     this.properties.foamLevel += this.randomRange(-3, 3);
     this.properties.foamLevel = Math.max(0, Math.min(100, this.properties.foamLevel));
+
+    if (this.properties.controlMode === 0) {
+      const controls = this.fuzzyController.adjustControls({
+        temperature: this.properties.temperature,
+        phValue: this.properties.phValue,
+      });
+      this.properties.addAcid = controls.addAcid;
+      this.properties.addAlkali = controls.addAlkali;
+      this.properties.cooling = controls.cooling;
+      this.properties.heating = controls.heating;
+      this.properties.stirring = controls.stirring;
+    }
   }
 
   disconnect(): void {

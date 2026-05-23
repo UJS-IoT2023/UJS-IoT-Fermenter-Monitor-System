@@ -1,8 +1,6 @@
 package cn.arorms.fms.server.configs;
 
-import cn.arorms.fms.server.properties.AliyunAmqpProperties;
-import cn.arorms.fms.server.amqp.AmqpConnectionListener;
-import cn.arorms.fms.server.amqp.AmqpMessageListener;
+import cn.arorms.fms.server.properties.AliyunProperties;
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
 import jakarta.jms.*;
@@ -21,10 +19,10 @@ import java.util.Hashtable;
 
 @Slf4j
 @Configuration
-@EnableConfigurationProperties(AliyunAmqpProperties.class)
+@EnableConfigurationProperties(AliyunProperties.class)
 public class AliyunAmqpConfig {
 
-    private final AliyunAmqpProperties properties;
+    private final AliyunProperties properties;
     private final AmqpMessageListener messageListener;
     private final AmqpConnectionListener connectionListener;
 
@@ -32,7 +30,7 @@ public class AliyunAmqpConfig {
     private Session session;
     private MessageConsumer consumer;
 
-    public AliyunAmqpConfig(AliyunAmqpProperties properties,
+    public AliyunAmqpConfig(AliyunProperties properties,
                             AmqpMessageListener messageListener,
                             AmqpConnectionListener connectionListener) {
         this.properties = properties;
@@ -48,17 +46,19 @@ public class AliyunAmqpConfig {
         String userName = clientId + "|authMode=aksign"
                 + ",signMethod=hmacsha1"
                 + ",timestamp=" + timestamp
-                + ",authId=" + properties.getAccessKey()
-                + ",iotInstanceId=" + properties.getIotInstanceId()
-                + ",consumerGroupId=" + properties.getConsumerGroupId()
+                + ",authId=" + properties.getAmqp().getAccessKey()
+                + ",iotInstanceId=" + properties.getAmqp().getIotInstanceId()
+                + ",consumerGroupId=" + properties.getAmqp().getConsumerGroupId()
                 + "|";
 
-        String signContent = "authId=" + properties.getAccessKey() + "&timestamp=" + timestamp;
-        String password = doSign(signContent, properties.getAccessSecret());
+        String signContent = "authId=" + properties.getAmqp().getAccessKey() + "&timestamp=" + timestamp;
+        String password = doSign(signContent, properties.getAmqp().getAccessSecret());
 
-        String connectionUrl = "amqps://" + properties.getUid()
-                + ".iot-amqp." + properties.getRegion()
-                + ".aliyuncs.com:5671?amqp.idleTimeout=80000";
+        String baseUrl = "amqps://" + properties.getAmqp().getUid()
+                + ".iot-amqp." + properties.getAmqp().getRegion()
+                + ".aliyuncs.com:5671?amqp.idleTimeout=" + properties.getAmqp().getIdleTimeout();
+
+        String connectionUrl = "failover:(" + baseUrl + ")?failover.maxReconnectAttempts=-1&failover.reconnectDelay=3000";
 
         Hashtable<String, String> hashtable = new Hashtable<>();
         hashtable.put("connectionfactory.SBCF", connectionUrl);

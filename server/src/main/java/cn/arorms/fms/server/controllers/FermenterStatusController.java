@@ -46,16 +46,21 @@ public class FermenterStatusController {
         return ResponseEntity.ok(fermenterStatusService.getFermenterLatestStatusByDeviceName(deviceName));
     }
 
-    @GetMapping("/realtime")
-    public ResponseEntity<List<FermenterStatusDto>> getRealtime(
-            @RequestParam(required = false) String deviceName) {
-        long now = System.currentTimeMillis();
-        long oneHourAgo = now - 60 * 60 * 1000L;
-        if (deviceName != null && !deviceName.isBlank()) {
-            return ResponseEntity.ok(fermenterStatusService.getRealtimeData(deviceName, oneHourAgo, now));
-        }
-        return ResponseEntity.ok(fermenterStatusService.getLatestAllDevices());
+    @GetMapping("/{device_name}/last-20-minutes")
+    public ResponseEntity<List<FermenterStatusDto>> getLast20Minutes(@PathVariable("device_name") String deviceName) {
+        return ResponseEntity.ok(fermenterStatusService.getLast20Minutes(deviceName));
     }
+
+//    @GetMapping("/realtime")
+//    public ResponseEntity<List<FermenterStatusDto>> getRealtime(
+//            @RequestParam(required = false) String deviceName) {
+//        long now = System.currentTimeMillis();
+//        long oneHourAgo = now - 60 * 60 * 1000L;
+//        if (deviceName != null && !deviceName.isBlank()) {
+//            return ResponseEntity.ok(fermenterStatusService.getRealtimeData(deviceName, oneHourAgo, now));
+//        }
+//        return ResponseEntity.ok(fermenterStatusService.getLatestAllDevices());
+//    }
 
     @GetMapping("/history")
     public ResponseEntity<Page<FermenterStatus>> getHistory(

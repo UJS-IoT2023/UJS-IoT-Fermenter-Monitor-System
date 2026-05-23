@@ -24,7 +24,7 @@ public class FermenterConnectionRedisRepository {
     public void saveDeviceOnlineStatus(String deviceName, boolean isOnline, String lastTime, String iotId, String clientIp) {
         String key = KEY_PREFIX + deviceName;
         Map<String, String> map = new HashMap<>();
-        map.put("isOnline", String.valueOf(isOnline));
+        map.put("online", String.valueOf(isOnline));
         map.put("lastTime", lastTime != null ? lastTime : "");
         map.put("iotId", iotId != null ? iotId : "");
         map.put("clientIp", clientIp != null ? clientIp : "");
@@ -50,8 +50,13 @@ public class FermenterConnectionRedisRepository {
 
     public boolean isDeviceOnline(String deviceName) {
         String key = KEY_PREFIX + deviceName;
-        Object isOnline = redisTemplate.opsForHash().get(key, "isOnline");
+        Object isOnline = redisTemplate.opsForHash().get(key, "online");
         return "true".equals(isOnline);
+    }
+
+    public String getIotIdByDeviceName(String deviceName) {
+        String key = KEY_PREFIX + deviceName;
+        return (String) redisTemplate.opsForHash().get(key, "iotId");
     }
 
     public List<FermenterConnectionStatusDto> getAllOnlineDeviceDetails() {
@@ -68,7 +73,7 @@ public class FermenterConnectionRedisRepository {
             String deviceName = k.substring(KEY_PREFIX.length());
             FermenterConnectionStatusDto dto = FermenterConnectionStatusDto.builder()
                     .deviceName(deviceName)
-                    .isOnline("true".equals(entries.get("isOnline")))
+                    .online("true".equals(entries.get("online")))
                     .lastTime((String) entries.get("lastTime"))
                     .iotId((String) entries.get("iotId"))
                     .clientIp((String) entries.get("clientIp"))

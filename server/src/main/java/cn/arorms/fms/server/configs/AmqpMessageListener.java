@@ -1,4 +1,4 @@
-package cn.arorms.fms.server.amqp;
+package cn.arorms.fms.server.configs;
 
 import cn.arorms.fms.server.dto.FermenterStatusDto;
 import cn.arorms.fms.server.services.FermenterConnectionService;

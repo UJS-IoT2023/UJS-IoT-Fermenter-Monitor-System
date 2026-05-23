@@ -1,4 +1,4 @@
-package cn.arorms.fms.server.amqp;
+package cn.arorms.fms.server.configs;
 
 import jakarta.jms.MessageConsumer;
 import jakarta.jms.MessageProducer;

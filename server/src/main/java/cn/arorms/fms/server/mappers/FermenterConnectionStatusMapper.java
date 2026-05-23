@@ -9,7 +9,7 @@ import org.mapstruct.MappingConstants;
 @Mapper(componentModel = MappingConstants.ComponentModel.SPRING)
 public interface FermenterConnectionStatusMapper {
 
-    @Mapping(target = "isOnline", expression = "java(entity.getEventType() == cn.arorms.fms.server.enums.ConnectionEventType.ONLINE)")
+    @Mapping(target = "online", expression = "java(entity.getEventType() == cn.arorms.fms.server.enums.ConnectionEventType.ONLINE)")
     @Mapping(target = "lastTime", expression = "java(entity.getEventTime() != null ? entity.getEventTime().toString() : null)")
     FermenterConnectionStatusDto toDto(FermenterConnectionEvent entity);
 }

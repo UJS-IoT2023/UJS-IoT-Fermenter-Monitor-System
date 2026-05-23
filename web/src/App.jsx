@@ -1,51 +1,52 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import * as echarts from 'echarts'
 
 const API_BASE = 'http://localhost:8080'
 const WS_BASE = 'ws://localhost:8080/api/ws'
 
-function useWebSocket(deviceName, onMessage) {
+function useWebSocket(onMessage) {
   const [connected, setConnected] = useState(false)
   const clientRef = useRef(null)
+  const onMessageRef = useRef()
+  const clientClassRef = useRef(null)
+  const effectStarted = useRef(false)
 
   useEffect(() => {
-    if (!deviceName) return
+    import('@stomp/stompjs').then(({ Client }) => {
+      clientClassRef.current = Client
+      if (effectStarted.current) return
+      effectStarted.current = true
 
-    let stompClient = null
-    let socket = null
+      const stompClient = new Client({
+        brokerURL: WS_BASE,
+        reconnectDelay: 5000,
+        heartbeatIncoming: 10000,
+        heartbeatOutgoing: 10000,
+      })
 
-    const connect = async () => {
-      const { default: Stomp } = await import('stompjs')
-      const { default: SockJS } = await import('sockjs-client')
-
-      socket = new SockJS(WS_BASE)
-      stompClient = Stomp.over(socket)
-      stompClient.debug = () => {}
       clientRef.current = stompClient
 
-      stompClient.connect({}, () => {
+      stompClient.onConnect = () => {
         setConnected(true)
         stompClient.subscribe('/topic/fermenter-status', (message) => {
-          const data = JSON.parse(message.body)
-          if (!deviceName || data.deviceName === deviceName) {
-            onMessage(data)
+          if (message.body) {
+            onMessageRef.current(JSON.parse(message.body))
           }
         })
-      }, (error) => {
-        console.error('WebSocket error:', error)
-        setConnected(false)
-      })
-    }
-
-    connect()
-
-    return () => {
-      if (stompClient) {
-        stompClient.disconnect()
       }
-      setConnected(false)
-    }
-  }, [deviceName, onMessage])
+
+      stompClient.onStompError = (frame) => {
+        console.error('STOMP error:', frame.headers['message'])
+        setConnected(false)
+      }
+
+      stompClient.activate()
+    })
+  }, [])
+
+  useEffect(() => {
+    onMessageRef.current = onMessage
+  }, [onMessage])
 
   return connected
 }
@@ -80,7 +81,7 @@ function DeviceList({ devices, selectedDevice, onSelect }) {
                     <span className="font-medium text-gray-800">{device.deviceName}</span>
                     <span
                       className={`w-2.5 h-2.5 rounded-full ${
-                        device.isOnline ? 'bg-green-500' : 'bg-gray-400'
+                        device.online ? 'bg-green-500' : 'bg-gray-400'
                       }`}
                     />
                   </div>
@@ -106,12 +107,11 @@ function RealtimeChart({ data, title, color, unit }) {
   useEffect(() => {
     if (!chartRef.current) return
 
-    if (chartInstanceRef.current) {
-      chartInstanceRef.current.dispose()
+    if (!chartInstanceRef.current) {
+      chartInstanceRef.current = echarts.init(chartRef.current)
     }
 
-    const chart = echarts.init(chartRef.current)
-    chartInstanceRef.current = chart
+    const chart = chartInstanceRef.current
 
     const option = {
       title: {
@@ -156,13 +156,33 @@ function RealtimeChart({ data, title, color, unit }) {
 
     chart.setOption(option)
 
-    return () => chart.dispose()
-  }, [data, title, color, unit])
+    return () => {
+      if (chartInstanceRef.current) {
+        chartInstanceRef.current.dispose()
+        chartInstanceRef.current = null
+      }
+    }
+  }, [title, color, unit])
+
+  useEffect(() => {
+    if (!chartInstanceRef.current) return
+    chartInstanceRef.current.setOption({
+      xAxis: {
+        type: 'category',
+        data: data.map(d => new Date(d.timestamp).toLocaleTimeString()),
+      },
+      series: [
+        {
+          data: data.map(d => d.value),
+        },
+      ],
+    })
+  }, [data])
 
   return <div ref={chartRef} className="w-full h-48" />
 }
 
-function DeviceDetail({ deviceName, status, realtimeData, wsConnected }) {
+function DeviceDetail({ deviceName, status, realtimeData, wsConnected, controlValues, onControlChange, onControlModeChange }) {
   if (!deviceName) {
     return (
       <div className="flex-1 flex items-center justify-center bg-gray-50">
@@ -185,10 +205,10 @@ function DeviceDetail({ deviceName, status, realtimeData, wsConnected }) {
   } : null
 
   const paramCards = [
-    { key: 'temperature', label: '温度', unit: '°C', color: '#EF4444', icon: '🌡️' },
-    { key: 'phValue', label: 'pH值', unit: '', color: '#10B981', icon: '⚗️' },
-    { key: 'dissolvedOxygen', label: '溶氧', unit: 'mg/L', color: '#3B82F6', icon: '💧' },
-    { key: 'foamLevel', label: '泡沫液位', unit: '%', color: '#8B5CF6', icon: '🫧' },
+    { key: 'temperature', label: '温度', unit: '°C', color: '#EF4444' },
+    { key: 'phValue', label: 'pH值', unit: '', color: '#10B981' },
+    { key: 'dissolvedOxygen', label: '溶氧', unit: 'mg/L', color: '#3B82F6' },
+    { key: 'foamLevel', label: '泡沫液位', unit: '%', color: '#8B5CF6' },
   ]
 
   const controlCards = [
@@ -229,31 +249,77 @@ function DeviceDetail({ deviceName, status, realtimeData, wsConnected }) {
         </div>
 
         <div className="bg-white rounded-xl p-4 shadow-sm border border-gray-100 mb-6">
-          <h3 className="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
-            <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-            </svg>
-            控制参数
-          </h3>
-          <div className="grid grid-cols-2 lg:grid-cols-5 gap-4">
-            {controlCards.map(({ key, label, unit, color }) => (
-              <div key={key} className="bg-gray-50 rounded-lg p-3">
-                <div className="text-xs text-gray-500 mb-1">{label}</div>
-                <div className="text-lg font-semibold" style={{ color }}>
-                  {latestData?.[key]?.value?.toFixed(1) ?? '--'}
-                  <span className="text-xs font-normal text-gray-400 ml-1">{unit}</span>
-                </div>
-                <div className="mt-2 h-1.5 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full rounded-full transition-all duration-300"
-                    style={{
-                      width: `${Math.min((latestData?.[key]?.value ?? 0) * 2, 100)}%`,
-                      backgroundColor: color,
-                    }}
-                  />
-                </div>
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
+              <svg className="w-5 h-5 text-blue-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+              </svg>
+              控制参数
+            </h3>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-500">控制模式</span>
+              <div className="flex rounded-lg overflow-hidden border border-gray-200">
+                <button
+                  onClick={() => onControlModeChange(0)}
+                  className={`px-3 py-1 text-sm font-medium transition-colors ${
+                    (status?.controlMode === 0 || status?.controlMode === 'LOCAL')
+                      ? 'bg-green-500 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  本地自动
+                </button>
+                <button
+                  onClick={() => onControlModeChange(1)}
+                  className={`px-3 py-1 text-sm font-medium transition-colors ${
+                    (status?.controlMode === 1 || status?.controlMode === 'REMOTE')
+                      ? 'bg-blue-500 text-white'
+                      : 'bg-white text-gray-600 hover:bg-gray-50'
+                  }`}
+                >
+                  远程控制
+                </button>
               </div>
-            ))}
+            </div>
+          </div>
+
+          {((status?.controlMode === 0 || status?.controlMode === 'LOCAL')) && (
+            <div className="mb-3 px-3 py-2 bg-green-50 border border-green-200 rounded-lg">
+              <p className="text-sm text-green-700">本地自动控制中，参数由网关模糊控制器自动调整</p>
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
+            {[
+              { key: 'addAcid', label: '加酸', color: '#F59E0B' },
+              { key: 'addAlkali', label: '加碱', color: '#6366F1' },
+              { key: 'cooling', label: '冷却', color: '#06B6D4' },
+              { key: 'heating', label: '加热', color: '#EC4899' },
+              { key: 'stirring', label: '搅拌', color: '#84CC16' },
+            ].map(({ key, label, color }) => {
+              const isLocal = status?.controlMode === 0 || status?.controlMode === 'LOCAL';
+              const currentValue = controlValues[key] ?? 0;
+              return (
+                <div key={key} className="bg-gray-50 rounded-lg p-3">
+                  <div className="flex justify-between text-xs text-gray-500 mb-1">
+                    <span>{label}</span>
+                    <span className="font-semibold" style={{ color }}>{currentValue}%</span>
+                  </div>
+                  <input
+                    type="range"
+                    min="0" max="100" step="25"
+                    value={currentValue}
+                    onChange={(e) => onControlChange(key, Number(e.target.value))}
+                    disabled={isLocal}
+                    className="w-full h-2 rounded-lg appearance-none cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed"
+                    style={{ accentColor: color }}
+                  />
+                  <div className="flex justify-between text-xs text-gray-400 mt-0.5">
+                    <span>0</span><span>25</span><span>50</span><span>75</span><span>100</span>
+                  </div>
+                </div>
+              );
+            })}
           </div>
         </div>
 
@@ -317,8 +383,30 @@ function App() {
     dissolvedOxygen: [],
     foamLevel: [],
   })
+  const [controlValues, setControlValues] = useState({
+    addAcid: 0, addAlkali: 0, cooling: 0, heating: 0, stirring: 0,
+  })
 
-  const handleStatusMessage = (data) => {
+  const onControlChange = useCallback((key, value) => {
+    setControlValues(prev => ({ ...prev, [key]: value }))
+    if (!selectedDevice) return
+    fetch(`${API_BASE}/api/fermenter-control/command`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceName: selectedDevice, [key]: value }),
+    }).catch(err => console.error('Failed to send control command:', err))
+  }, [selectedDevice])
+
+  const onControlModeChange = useCallback((mode) => {
+    if (!selectedDevice) return
+    fetch(`${API_BASE}/api/fermenter-control/command`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceName: selectedDevice, controlMode: mode }),
+    }).catch(err => console.error('Failed to send control mode change:', err))
+  }, [selectedDevice])
+
+  const handleStatusMessage = useCallback((data) => {
     setStatus(data)
 
     setRealtimeData(prev => {
@@ -334,9 +422,9 @@ function App() {
         foamLevel: addPoint(prev.foamLevel, data.foamLevel, data.timestamp),
       }
     })
-  }
+  }, [])
 
-  const wsConnected = useWebSocket(selectedDevice, handleStatusMessage)
+  const wsConnected = useWebSocket(handleStatusMessage)
 
   useEffect(() => {
     fetch(`${API_BASE}/api/fermenter-connection/devices`)
@@ -347,21 +435,37 @@ function App() {
 
   useEffect(() => {
     if (!selectedDevice) {
-      setStatus(null)
-      setRealtimeData({ temperature: [], phValue: [], dissolvedOxygen: [], foamLevel: [] })
+      queueMicrotask(() => {
+        setStatus(null)
+        setRealtimeData({ temperature: [], phValue: [], dissolvedOxygen: [], foamLevel: [] })
+        setControlValues({ addAcid: 0, addAlkali: 0, cooling: 0, heating: 0, stirring: 0 })
+      })
       return
     }
 
-    fetch(`${API_BASE}/api/fermenter-status/${selectedDevice}/latest`)
+    fetch(`${API_BASE}/api/fermenter-status/${selectedDevice}/last-20-minutes`)
       .then(res => res.json())
       .then(data => {
-        setStatus(data)
-        const now = data.timestamp ? new Date(data.timestamp).getTime() : Date.now()
+        if (!Array.isArray(data) || data.length === 0) {
+          setStatus(null)
+          setRealtimeData({ temperature: [], phValue: [], dissolvedOxygen: [], foamLevel: [] })
+          return
+        }
+        const latest = data[data.length - 1]
+        const timestamp = latest.timestamp ? new Date(latest.timestamp).getTime() : Date.now()
+        setStatus(latest)
+        setControlValues({
+          addAcid: latest.addAcid ?? 0,
+          addAlkali: latest.addAlkali ?? 0,
+          cooling: latest.cooling ?? 0,
+          heating: latest.heating ?? 0,
+          stirring: latest.stirring ?? 0,
+        })
         setRealtimeData({
-          temperature: [{ value: data.temperature, timestamp: now }],
-          phValue: [{ value: data.phValue, timestamp: now }],
-          dissolvedOxygen: [{ value: data.dissolvedOxygen, timestamp: now }],
-          foamLevel: [{ value: data.foamLevel, timestamp: now }],
+          temperature: data.map(d => ({ value: d.temperature, timestamp: d.timestamp ? new Date(d.timestamp).getTime() : Date.now() })),
+          phValue: data.map(d => ({ value: d.phValue, timestamp: d.timestamp ? new Date(d.timestamp).getTime() : Date.now() })),
+          dissolvedOxygen: data.map(d => ({ value: d.dissolvedOxygen, timestamp: d.timestamp ? new Date(d.timestamp).getTime() : Date.now() })),
+          foamLevel: data.map(d => ({ value: d.foamLevel, timestamp: d.timestamp ? new Date(d.timestamp).getTime() : Date.now() })),
         })
       })
       .catch(err => console.error('Failed to fetch status:', err))
@@ -379,6 +483,9 @@ function App() {
         status={status}
         realtimeData={realtimeData}
         wsConnected={wsConnected}
+        controlValues={controlValues}
+        onControlChange={onControlChange}
+        onControlModeChange={onControlModeChange}
       />
     </div>
   )
